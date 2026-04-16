@@ -1,0 +1,112 @@
+# Baixar a imagem busybox
+podman  pull busybox
+
+# checando as imagens que temos baixadas
+podman  images
+
+# checando containers em execução
+podman  ps
+
+# executando a imagem busybox
+podman  run busybox
+
+# nada aconteceu, tudo bem. chamamos o container e não passamos nenhuma instrução para ele, vamos fazer um pouco diferente
+
+podman  run busybox echo "Aula prática de containers"
+
+# parece que não aconteceu nada aqui, foi so um echo, vamos checar 
+ 
+podman  ps -a 
+
+# voces devem ter observado que o container executou o echo e foi finalizado, sera que conseguimos executar mais coisas nele
+
+podman  run -it busybox sh
+
+ls -l
+cd /home
+cd ..
+uptime
+exit
+
+# Vamos excluir o container busybox que acessamos no terminal, pegue o ID dele e cole apos o podman  rm 
+
+podman rm ID_podman 
+
+# outra forma seria executar um podman  container prune
+
+podman  container prune
+
+# vamos executar um servidor web, em um site estatico com uma imagem padrao de testes. usamos --rm para remover automaticamente o container quando finalizado e --it especifica uso do terminal interativo para podermos pressionar um ctrl+c para finalizar a execução do container
+
+podman  run --rm -it prakhar1989/static-site
+
+# deve ter aparecido uma mensagem de Nginx running, ou seja, o site esta no ar. mas qual porta devemos  usar para acessar, vamos parar nosso container e executa-lo novamente
+
+ctrl+c
+
+# vamos executa-lo novamente com podman  run e vamos executar em modo detached (desanexado), ou seja, manteremos nosso terminal livre enquanto o container executa
+
+podman  run -d -P --name site-estatico prakhar1989/static-site
+
+# vamos checar a porta que o site esta usando 
+
+podman  port site-estatico
+
+# acesse localhost:32768
+
+# vamos parar o nosso container do site estatico
+
+podman  stop site-estatico
+
+
+### Baixando imagens ###
+
+podman  pull ubuntu:latest
+
+podman  pull python:3.11
+
+podman  pull mysql:latest
+
+
+### podman  Build ###
+
+# Site
+1. Baixar e salvar o index.html e podman file
+2. Navegue ate a pasta onde salvou os arquivos 
+3. podman build -t meu-site .
+4. podman run -d -p 8080:80 --name meu-site-container meu-site
+5. http://localhost:8080
+
+# Anaconda
+1. Navegue ate a pasta onde salvou os arquivos 
+2. podman build -t anaconda-jupyter .
+3. podman run -d -p 8888:8888 --name jupyter-container anaconda-jupyter
+4. http://localhost:8888
+
+#### Linux #####
+1. Navegue ate a pasta onde salvou os arquivos 
+2. podman build -t ubuntu-shell-aula .
+3. podman run -d -p 2222:22 -v "C:/Users/Leandro Silva/Documents/Aulas:/home/aluno/aulas" --name shell-aula ubuntu-shell-aula
+4. ssh aluno@localhost -p 2222
+5. Senha aluno123 
+
+
+################### Parametros Podman run ###############################
+
+estrutura
+podman run [opções] imagem [comando]
+Ex.: podman run -d -p 8080:80 nginx
+
+Essenciais e mais usados
+
+-d : Detached Mode (roda em background)
+-it : Interativo + terminal
+---name : Nome do container
+-p HOST:CONTAINER : Mapeia portas Ex: podman run -p 8080:80 nginx
+--network : Define rede
+-v HOST:CONTAINER : Monta diretório Ex: podman run -v /meus-dados:/data ubuntu
+--memory - Limita RAM
+--cpu Limita CPU Ex: podman run --memory=512m --cpus=1 nginx
+
+ 
+

@@ -1,0 +1,28 @@
+Aula de Segunda:
+
+Parte 1:
+- docker ps
+- docker pull puckel/docker-airflow
+- docker compose -f docker-compose-CeleryExecutor.yml up -d
+- docker ps
+
+- localhost:8080/admin
+
+Parte 2:
+- Escrever a DAG save parquet
+- copiar o arquivo para o container
+- docker cp dag_save_parquet.py ID_Airflow:/usr/local/airflow/dags
+
+- localhost:8080/admin
+
+Parte 3:
+- docker pull cassandra:latest
+- docker network create cassandra
+- docker run --rm -d --name cassandra --hostname cassandra --network cassandra cassandra
+- docker ps // para pegar id do cassandra e do Airflow
+
+- Escrever a DAG que salva no Cassandra
+- copiar a dag para o airflow
+- docker cp dag_save_covid_daata_to_cassandra.py ID_Airflow:/usr/local/airflow/dags
+
+- localhost:8080/admin
