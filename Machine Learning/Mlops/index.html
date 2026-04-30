@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>F1 Pit Stop Predictor</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --panel: #151922;
+      --panel-2: #1f2530;
+      --line: #313949;
+      --text: #f4f7fb;
+      --muted: #a8b0bd;
+      --red: #e1062c;
+      --green: #18c29c;
+      --yellow: #f2c94c;
+      --blue: #4aa3ff;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: #10141b;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+
+    .status {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--yellow);
+    }
+
+    .dot.online { background: var(--green); box-shadow: 0 0 12px rgba(24, 194, 156, .75); }
+    .dot.offline { background: var(--red); }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 28px auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    section, aside {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .section-head {
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .body { padding: 18px; }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .tab, button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--text);
+      background: #202735;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .tab.active, button.primary {
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    button:disabled {
+      cursor: progress;
+      opacity: .65;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #0f131a;
+      color: var(--text);
+      padding: 10px;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 260px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .link {
+      color: var(--blue);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .result {
+      padding: 22px;
+      text-align: center;
+    }
+
+    .verdict {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 6px 0;
+    }
+
+    .verdict.pit { color: var(--green); }
+    .verdict.no-pit { color: var(--red); }
+    .muted { color: var(--muted); }
+
+    .metric {
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .bar {
+      height: 10px;
+      background: #0f131a;
+      border: 1px solid var(--line);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      width: 0;
+      background: var(--green);
+      transition: width .25s ease;
+    }
+
+    .fill.red { background: var(--red); }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      background: #0f131a;
+      border-top: 1px solid var(--line);
+      overflow: auto;
+      max-height: 330px;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .error {
+      display: none;
+      margin-top: 14px;
+      color: #ffd6dd;
+      border: 1px solid var(--red);
+      background: rgba(225, 6, 44, .12);
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .batch-summary {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+      text-align: left;
+    }
+
+    .summary-card {
+      background: #0f131a;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 12px;
+    }
+
+    .summary-card strong {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 3px;
+    }
+
+    footer {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto 28px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      header .status { margin-left: 0; }
+      main { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 560px) {
+      .grid { grid-template-columns: 1fr; }
+      .tabs { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>F1 Pit Stop Predictor</h1>
+    <span class="tag">MLOps deploy lab</span>
+    <a class="link" href="/docs" target="_blank" rel="noreferrer">Swagger</a>
+    <div class="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">verificando API...</span>
+    </div>
+  </header>
+
+  <main>
+    <section>
+      <div class="section-head">
+        <span>Entrada do modelo</span>
+        <span class="muted">15 features</span>
+      </div>
+      <div class="body">
+        <div class="tabs">
+          <button class="tab active" id="singleTab" type="button">Registro unico</button>
+          <button class="tab" id="batchTab" type="button">Batch</button>
+        </div>
+
+        <div id="singlePanel">
+          <div class="grid">
+            <label>Driver
+              <select id="Driver">
+                <option value="0">0 - STR</option>
+                <option value="1">1 - NOR</option>
+                <option value="2">2 - VER</option>
+                <option value="3" selected>3 - TSU</option>
+                <option value="4">4 - HAM</option>
+                <option value="5">5 - LEC</option>
+              </select>
+            </label>
+            <label>LapNumber <input id="LapNumber" type="number" value="11" min="1" max="100"></label>
+            <label>Compound
+              <select id="Compound">
+                <option value="0">0 - HARD</option>
+                <option value="1" selected>1 - INTERMEDIATE</option>
+                <option value="2">2 - MEDIUM</option>
+                <option value="3">3 - SOFT</option>
+              </select>
+            </label>
+            <label>Stint <input id="Stint" type="number" value="1" min="1"></label>
+            <label>TyreLife <input id="TyreLife" type="number" value="14" min="0" step="0.5"></label>
+            <label>Position <input id="Position" type="number" value="3" min="1" max="20"></label>
+            <label>LapTime_s <input id="LapTime_s" type="number" value="84.953" step="0.001"></label>
+            <label>Race
+              <select id="Race">
+                <option value="0">0 - Austrian GP</option>
+                <option value="5">5 - Dutch GP</option>
+                <option value="8">8 - Italian GP</option>
+                <option value="11">11 - Monaco GP</option>
+                <option value="18" selected>18 - Sao Paulo GP</option>
+              </select>
+            </label>
+            <label>Year <input id="Year" type="number" value="2024" min="2018" max="2035"></label>
+            <label>LapTime_Delta <input id="LapTime_Delta" type="number" value="-16.660" step="0.001"></label>
+            <label>Cumulative_Degradation <input id="Cumulative_Degradation" type="number" value="15.394" step="0.001"></label>
+            <label>PitStop
+              <select id="PitStop">
+                <option value="0" selected>0 - Nao</option>
+                <option value="1">1 - Sim</option>
+              </select>
+            </label>
+            <label>RaceProgress <input id="RaceProgress" type="number" value="0.142857" min="0" max="1" step="0.000001"></label>
+            <label>Normalized_TyreLife <input id="Normalized_TyreLife" type="number" value="0.318182" min="0" max="1" step="0.000001"></label>
+            <label>Position_Change <input id="Position_Change" type="number" value="5.0" step="0.5"></label>
+          </div>
+          <div class="actions">
+            <button class="primary" id="predictBtn" type="button">Predizer pit stop</button>
+            <button id="modelBtn" type="button">Ver metadados do modelo</button>
+          </div>
+        </div>
+
+        <div id="batchPanel" hidden>
+          <textarea id="batchInput" spellcheck="false">[
+  {
+    "Driver": 3,
+    "LapNumber": 11,
+    "Compound": 1,
+    "Stint": 1,
+    "TyreLife": 14.0,
+    "Position": 3,
+    "LapTime_s": 84.953,
+    "Race": 18,
+    "Year": 2024,
+    "LapTime_Delta": -16.660,
+    "Cumulative_Degradation": 15.394,
+    "PitStop": 0,
+    "RaceProgress": 0.142857,
+    "Normalized_TyreLife": 0.318182,
+    "Position_Change": 5.0
+  },
+  {
+    "Driver": 1,
+    "LapNumber": 59,
+    "Compound": 0,
+    "Stint": 3,
+    "TyreLife": 7.0,
+    "Position": 2,
+    "LapTime_s": 72.379,
+    "Race": 5,
+    "Year": 2025,
+    "LapTime_Delta": 3.944,
+    "Cumulative_Degradation": -67.300,
+    "PitStop": 0,
+    "RaceProgress": 0.756410,
+    "Normalized_TyreLife": 0.233333,
+    "Position_Change": -1.0
+  }
+]</textarea>
+          <div class="actions">
+            <button class="primary" id="batchBtn" type="button">Processar batch</button>
+          </div>
+        </div>
+
+        <div class="error" id="errorBox"></div>
+      </div>
+    </section>
+
+    <aside>
+      <div class="section-head">Resultado</div>
+      <div class="result">
+        <div class="muted" id="resultSub">Aguardando uma predicao</div>
+        <div class="verdict" id="verdict">--</div>
+
+        <div class="metric">
+          <div class="metric-row"><span>Probabilidade de pit</span><strong id="pitValue">0%</strong></div>
+          <div class="bar"><div class="fill" id="pitBar"></div></div>
+        </div>
+
+        <div class="metric">
+          <div class="metric-row"><span>Probabilidade de nao pit</span><strong id="noPitValue">0%</strong></div>
+          <div class="bar"><div class="fill red" id="noPitBar"></div></div>
+        </div>
+
+        <div class="batch-summary" id="batchSummary" hidden></div>
+      </div>
+      <pre id="rawOutput">{}</pre>
+    </aside>
+  </main>
+
+  <footer>
+    Frontend servido por Nginx na porta 3000. API FastAPI exposta diretamente na porta 8000 e tambem via proxy em /api.
+  </footer>
+
+  <script>
+    const API = "/api";
+    const fields = [
+      "Driver", "LapNumber", "Compound", "Stint", "TyreLife", "Position",
+      "LapTime_s", "Race", "Year", "LapTime_Delta", "Cumulative_Degradation",
+      "PitStop", "RaceProgress", "Normalized_TyreLife", "Position_Change"
+    ];
+
+    const intFields = new Set(["Driver", "LapNumber", "Compound", "Stint", "Position", "Race", "Year", "PitStop"]);
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    function setMode(mode) {
+      $("singleTab").classList.toggle("active", mode === "single");
+      $("batchTab").classList.toggle("active", mode === "batch");
+      $("singlePanel").hidden = mode !== "single";
+      $("batchPanel").hidden = mode !== "batch";
+      $("errorBox").style.display = "none";
+    }
+
+    function payloadFromForm() {
+      const payload = {};
+      for (const field of fields) {
+        const value = $(field).value;
+        payload[field] = intFields.has(field) ? Number.parseInt(value, 10) : Number.parseFloat(value);
+      }
+      return payload;
+    }
+
+    function showError(message) {
+      $("errorBox").textContent = message;
+      $("errorBox").style.display = "block";
+    }
+
+    function showRaw(data) {
+      $("rawOutput").textContent = JSON.stringify(data, null, 2);
+    }
+
+    function renderSingle(data) {
+      const isPit = data.PitNextLap === 1;
+      $("resultSub").textContent = `Confianca: ${data.confidence}`;
+      $("verdict").textContent = isPit ? "VAI AO PIT" : "NAO VAI AO PIT";
+      $("verdict").className = `verdict ${isPit ? "pit" : "no-pit"}`;
+      $("pitValue").textContent = `${(data.probability_pit * 100).toFixed(1)}%`;
+      $("noPitValue").textContent = `${(data.probability_no_pit * 100).toFixed(1)}%`;
+      $("pitBar").style.width = `${data.probability_pit * 100}%`;
+      $("noPitBar").style.width = `${data.probability_no_pit * 100}%`;
+      $("batchSummary").hidden = true;
+    }
+
+    function renderBatch(data) {
+      $("resultSub").textContent = "Resumo do lote";
+      $("verdict").textContent = `${data.total_records} registros`;
+      $("verdict").className = "verdict";
+      $("pitValue").textContent = `${(data.summary.avg_probability_pit * 100).toFixed(1)}%`;
+      $("noPitValue").textContent = `${(100 - data.summary.avg_probability_pit * 100).toFixed(1)}%`;
+      $("pitBar").style.width = `${data.summary.avg_probability_pit * 100}%`;
+      $("noPitBar").style.width = `${100 - data.summary.avg_probability_pit * 100}%`;
+      $("batchSummary").hidden = false;
+      $("batchSummary").innerHTML = `
+        <div class="summary-card"><strong>${data.summary.total_pit}</strong><span class="muted">vao ao pit</span></div>
+        <div class="summary-card"><strong>${data.summary.total_no_pit}</strong><span class="muted">nao vao</span></div>
+        <div class="summary-card"><strong>${data.summary.pct_pit}%</strong><span class="muted">taxa de pit</span></div>
+        <div class="summary-card"><strong>${(data.summary.avg_probability_pit * 100).toFixed(1)}%</strong><span class="muted">prob. media</span></div>
+      `;
+    }
+
+    async function requestJson(path, options = {}) {
+      const response = await fetch(`${API}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...options
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || `Erro HTTP ${response.status}`);
+      }
+      return data;
+    }
+
+    async function checkHealth() {
+      try {
+        const health = await requestJson("/health");
+        $("statusDot").className = `dot ${health.model_loaded ? "online" : "offline"}`;
+        $("statusText").textContent = health.model_loaded ? "API online com modelo carregado" : "API online sem modelo";
+      } catch (error) {
+        $("statusDot").className = "dot offline";
+        $("statusText").textContent = "API offline";
+      }
+    }
+
+    $("singleTab").addEventListener("click", () => setMode("single"));
+    $("batchTab").addEventListener("click", () => setMode("batch"));
+
+    $("predictBtn").addEventListener("click", async () => {
+      $("errorBox").style.display = "none";
+      $("predictBtn").disabled = true;
+      try {
+        const data = await requestJson("/predict", {
+          method: "POST",
+          body: JSON.stringify(payloadFromForm())
+        });
+        renderSingle(data);
+        showRaw(data);
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        $("predictBtn").disabled = false;
+      }
+    });
+
+    $("batchBtn").addEventListener("click", async () => {
+      $("errorBox").style.display = "none";
+      $("batchBtn").disabled = true;
+      try {
+        const records = JSON.parse($("batchInput").value);
+        if (!Array.isArray(records)) throw new Error("O batch deve ser um array JSON.");
+        const data = await requestJson("/predict/batch", {
+          method: "POST",
+          body: JSON.stringify({ records })
+        });
+        renderBatch(data);
+        showRaw(data);
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        $("batchBtn").disabled = false;
+      }
+    });
+
+    $("modelBtn").addEventListener("click", async () => {
+      $("errorBox").style.display = "none";
+      try {
+        const data = await requestJson("/model/info");
+        showRaw(data);
+      } catch (error) {
+        showError(error.message);
+      }
+    });
+
+    checkHealth();
+    setInterval(checkHealth, 15000);
+  </script>
+</body>
+</html>
